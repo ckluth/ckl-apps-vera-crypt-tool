@@ -28,14 +28,15 @@ public class CreateKeyFileCommandIntegrationTests
     public void Execute_ThenDecryptWithSamePin_RoundTripsStrongPassword()
     {
         var keyFilePath = Path.Combine(_tempDirectory, "key-file.kf");
+        var recoveredPasswordPath = Path.Combine(_tempDirectory, "recovered.txt");
 
         var createResult = CreateKeyFileCommand.Execute(keyFilePath, "1234", "random-password-12345!");
 
         Assert.That(createResult.Succeeded, Is.True);
         Assert.That(File.Exists(keyFilePath), Is.True);
-        var decryptResult = CryptoService.DecryptString(File.ReadAllText(keyFilePath), "1234");
+        var decryptResult = CryptoService.DecryptFile(keyFilePath, recoveredPasswordPath, "1234");
         Assert.That(decryptResult.Succeeded, Is.True);
-        Assert.That(decryptResult.Value, Is.EqualTo("random-password-12345!"));
+        Assert.That(File.ReadAllText(recoveredPasswordPath), Is.EqualTo("random-password-12345!"));
     }
 
     [Test]
@@ -43,8 +44,9 @@ public class CreateKeyFileCommandIntegrationTests
     {
         var keyFilePath = Path.Combine(_tempDirectory, "key-file.kf");
         CreateKeyFileCommand.Execute(keyFilePath, "1234", "random-password-12345!");
+        var recoveredPasswordPath = Path.Combine(_tempDirectory, "recovered.txt");
 
-        var decryptResult = CryptoService.DecryptString(File.ReadAllText(keyFilePath), "0000");
+        var decryptResult = CryptoService.DecryptFile(keyFilePath, recoveredPasswordPath, "0000");
 
         Assert.That(decryptResult.Succeeded, Is.False);
     }
@@ -57,5 +59,21 @@ public class CreateKeyFileCommandIntegrationTests
         var result = CreateKeyFileCommand.Execute(invalidPath, "1234", "pw");
 
         Assert.That(result.Succeeded, Is.False);
+    }
+
+    [Test]
+    public void Execute_WritesRawBinaryContainerWithCklcMagicAtByteZero()
+    {
+        var keyFilePath = Path.Combine(_tempDirectory, "key-file.kf");
+
+        CreateKeyFileCommand.Execute(keyFilePath, "1234", "random-password-12345!");
+
+        var magicBytes = new byte[4];
+        using (var stream = File.OpenRead(keyFilePath))
+        {
+            stream.ReadExactly(magicBytes);
+        }
+
+        Assert.That(System.Text.Encoding.ASCII.GetString(magicBytes), Is.EqualTo("CKLC"));
     }
 }

@@ -8,6 +8,16 @@ and this project aims to adhere to
 
 ## [Unreleased]
 
+### Fixed
+
+- `create-keyfile`/`mount` now use `CKL.Libs.Crypt`'s file-based
+  `EncryptFile`/`DecryptFile` overloads instead of `EncryptString`/
+  `DecryptString`. Previously the KeyFile was written as Base64 **text**,
+  not a binary container — its on-disk bytes started with Base64
+  characters, not the literal `CKLC` magic. The strong password now
+  transits a short-lived plaintext temp file (deleted immediately after)
+  on both `create-keyfile` and `mount`.
+
 ## [1.0.0]
 
 ### Added

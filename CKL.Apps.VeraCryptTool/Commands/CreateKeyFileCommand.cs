@@ -15,26 +15,30 @@ public sealed class CreateKeyFileCommand : ICreateKeyFileCommand
     /// <inheritdoc />
     public static Result Execute(string keyFilePath, string pin, string strongPassword)
     {
-        var encryptResult = CryptoService.EncryptString(strongPassword, pin);
-        if (!encryptResult.Succeeded)
-        {
-            return Result.Fail("Failed to encrypt the strong password into the KeyFile.");
-        }
-
-        return WriteKeyFile(keyFilePath, encryptResult.Value);
-    }
-
-    private static Result WriteKeyFile(string keyFilePath, string keyFileContent)
-    {
+        var tempPlainTextPath = Path.GetTempFileName();
         try
         {
-            File.WriteAllText(keyFilePath, keyFileContent);
+            return EncryptViaTempFile(keyFilePath, pin, strongPassword, tempPlainTextPath);
         }
         catch (Exception ex)
         {
             return Result.Fail($"Failed to write KeyFile '{keyFilePath}': {ex.Message}");
         }
+        finally
+        {
+            File.Delete(tempPlainTextPath);
+        }
+    }
 
-        return Result.Success;
+    private static Result EncryptViaTempFile(string keyFilePath, string pin, string strongPassword, string tempPlainTextPath)
+    {
+        File.WriteAllText(tempPlainTextPath, strongPassword);
+
+        // captureLastAccessTime: false — the temp file's own timestamps are meaningless
+        // metadata for a freshly staged plaintext password; no reason to embed them.
+        var encryptResult = CryptoService.EncryptFile(tempPlainTextPath, keyFilePath, pin, captureLastAccessTime: false);
+        return encryptResult.Succeeded
+            ? Result.Success
+            : Result.Fail("Failed to encrypt the strong password into the KeyFile.");
     }
 }

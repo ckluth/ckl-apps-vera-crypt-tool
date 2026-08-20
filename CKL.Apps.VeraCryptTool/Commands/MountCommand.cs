@@ -44,24 +44,26 @@ public sealed class MountCommand : IMountCommand
 
     private static Result<string> RecoverStrongPassword(string keyFilePath, string pin)
     {
-        string keyFileContent;
+        var tempPlainTextPath = Path.GetTempFileName();
         try
         {
-            keyFileContent = File.ReadAllText(keyFilePath);
+            var decryptResult = CryptoService.DecryptFile(keyFilePath, tempPlainTextPath, pin);
+            if (!decryptResult.Succeeded)
+            {
+                // Deliberately generic — never surface *why* decryption failed (matches
+                // ckl-libs-crypt's own hardened decryption-failure posture, ADR-0009).
+                return Result<string>.Fail("Failed to unlock the KeyFile — wrong PIN or a corrupted KeyFile.");
+            }
+
+            return File.ReadAllText(tempPlainTextPath);
         }
         catch (Exception ex)
         {
             return Result<string>.Fail($"Failed to read KeyFile '{keyFilePath}': {ex.Message}");
         }
-
-        var decryptResult = CryptoService.DecryptString(keyFileContent, pin);
-        if (!decryptResult.Succeeded)
+        finally
         {
-            // Deliberately generic — never surface *why* decryption failed (matches
-            // ckl-libs-crypt's own hardened decryption-failure posture, ADR-0009).
-            return Result<string>.Fail("Failed to unlock the KeyFile — wrong PIN or a corrupted KeyFile.");
+            File.Delete(tempPlainTextPath);
         }
-
-        return decryptResult;
     }
 }
