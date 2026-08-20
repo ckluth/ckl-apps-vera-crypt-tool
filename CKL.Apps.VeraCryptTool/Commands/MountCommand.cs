@@ -1,3 +1,4 @@
+using System.Text;
 using CKL.Apps.VeraCryptTool.Contracts;
 using CKL.Apps.VeraCryptTool.VeraCrypt;
 using CKL.Libs.Crypt;
@@ -44,26 +45,24 @@ public sealed class MountCommand : IMountCommand
 
     private static Result<string> RecoverStrongPassword(string keyFilePath, string pin)
     {
-        var tempPlainTextPath = Path.GetTempFileName();
+        byte[] keyFileBytes;
         try
         {
-            var decryptResult = CryptoService.DecryptFile(keyFilePath, tempPlainTextPath, pin);
-            if (!decryptResult.Succeeded)
-            {
-                // Deliberately generic — never surface *why* decryption failed (matches
-                // ckl-libs-crypt's own hardened decryption-failure posture, ADR-0009).
-                return Result<string>.Fail("Failed to unlock the KeyFile — wrong PIN or a corrupted KeyFile.");
-            }
-
-            return File.ReadAllText(tempPlainTextPath);
+            keyFileBytes = File.ReadAllBytes(keyFilePath);
         }
         catch (Exception ex)
         {
             return Result<string>.Fail($"Failed to read KeyFile '{keyFilePath}': {ex.Message}");
         }
-        finally
+
+        var decryptResult = CryptoService.Decrypt(keyFileBytes, pin);
+        if (!decryptResult.Succeeded)
         {
-            File.Delete(tempPlainTextPath);
+            // Deliberately generic — never surface *why* decryption failed (matches
+            // ckl-libs-crypt's own hardened decryption-failure posture, ADR-0009).
+            return Result<string>.Fail("Failed to unlock the KeyFile — wrong PIN or a corrupted KeyFile.");
         }
+
+        return Encoding.UTF8.GetString(decryptResult.Value);
     }
 }

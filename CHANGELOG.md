@@ -10,13 +10,12 @@ and this project aims to adhere to
 
 ### Fixed
 
-- `create-keyfile`/`mount` now use `CKL.Libs.Crypt`'s file-based
-  `EncryptFile`/`DecryptFile` overloads instead of `EncryptString`/
-  `DecryptString`. Previously the KeyFile was written as Base64 **text**,
-  not a binary container — its on-disk bytes started with Base64
-  characters, not the literal `CKLC` magic. The strong password now
-  transits a short-lived plaintext temp file (deleted immediately after)
-  on both `create-keyfile` and `mount`.
+- `create-keyfile`/`mount` now use `CKL.Libs.Crypt`'s byte-array
+  `Encrypt`/`Decrypt` overloads instead of `EncryptString`/`DecryptString`.
+  Previously the KeyFile was written as Base64 **text**, not a binary
+  container — its on-disk bytes started with Base64 characters, not the
+  literal `CKLC` magic. The strong password stays in memory throughout —
+  no Base64 encoding, no temp file.
 
 ## [1.0.0]
 

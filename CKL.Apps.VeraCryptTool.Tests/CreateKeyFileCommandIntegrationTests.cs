@@ -1,3 +1,4 @@
+using System.Text;
 using CKL.Apps.VeraCryptTool.Commands;
 using CKL.Libs.Crypt;
 using NUnit.Framework;
@@ -28,15 +29,14 @@ public class CreateKeyFileCommandIntegrationTests
     public void Execute_ThenDecryptWithSamePin_RoundTripsStrongPassword()
     {
         var keyFilePath = Path.Combine(_tempDirectory, "key-file.kf");
-        var recoveredPasswordPath = Path.Combine(_tempDirectory, "recovered.txt");
 
         var createResult = CreateKeyFileCommand.Execute(keyFilePath, "1234", "random-password-12345!");
 
         Assert.That(createResult.Succeeded, Is.True);
         Assert.That(File.Exists(keyFilePath), Is.True);
-        var decryptResult = CryptoService.DecryptFile(keyFilePath, recoveredPasswordPath, "1234");
+        var decryptResult = CryptoService.Decrypt(File.ReadAllBytes(keyFilePath), "1234");
         Assert.That(decryptResult.Succeeded, Is.True);
-        Assert.That(File.ReadAllText(recoveredPasswordPath), Is.EqualTo("random-password-12345!"));
+        Assert.That(Encoding.UTF8.GetString(decryptResult.Value!), Is.EqualTo("random-password-12345!")); // Value is non-null when Succeeded
     }
 
     [Test]
@@ -44,9 +44,8 @@ public class CreateKeyFileCommandIntegrationTests
     {
         var keyFilePath = Path.Combine(_tempDirectory, "key-file.kf");
         CreateKeyFileCommand.Execute(keyFilePath, "1234", "random-password-12345!");
-        var recoveredPasswordPath = Path.Combine(_tempDirectory, "recovered.txt");
 
-        var decryptResult = CryptoService.DecryptFile(keyFilePath, recoveredPasswordPath, "0000");
+        var decryptResult = CryptoService.Decrypt(File.ReadAllBytes(keyFilePath), "0000");
 
         Assert.That(decryptResult.Succeeded, Is.False);
     }

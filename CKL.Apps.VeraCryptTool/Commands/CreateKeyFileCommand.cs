@@ -1,3 +1,4 @@
+using System.Text;
 using CKL.Apps.VeraCryptTool.Contracts;
 using CKL.Libs.Crypt;
 using CKL.Libs.ResultPattern;
@@ -15,30 +16,26 @@ public sealed class CreateKeyFileCommand : ICreateKeyFileCommand
     /// <inheritdoc />
     public static Result Execute(string keyFilePath, string pin, string strongPassword)
     {
-        var tempPlainTextPath = Path.GetTempFileName();
+        var encryptResult = CryptoService.Encrypt(Encoding.UTF8.GetBytes(strongPassword), pin);
+        if (!encryptResult.Succeeded)
+        {
+            return Result.Fail("Failed to encrypt the strong password into the KeyFile.");
+        }
+
+        return WriteKeyFile(keyFilePath, encryptResult.Value);
+    }
+
+    private static Result WriteKeyFile(string keyFilePath, byte[] keyFileBytes)
+    {
         try
         {
-            return EncryptViaTempFile(keyFilePath, pin, strongPassword, tempPlainTextPath);
+            File.WriteAllBytes(keyFilePath, keyFileBytes);
         }
         catch (Exception ex)
         {
             return Result.Fail($"Failed to write KeyFile '{keyFilePath}': {ex.Message}");
         }
-        finally
-        {
-            File.Delete(tempPlainTextPath);
-        }
-    }
 
-    private static Result EncryptViaTempFile(string keyFilePath, string pin, string strongPassword, string tempPlainTextPath)
-    {
-        File.WriteAllText(tempPlainTextPath, strongPassword);
-
-        // captureLastAccessTime: false — the temp file's own timestamps are meaningless
-        // metadata for a freshly staged plaintext password; no reason to embed them.
-        var encryptResult = CryptoService.EncryptFile(tempPlainTextPath, keyFilePath, pin, captureLastAccessTime: false);
-        return encryptResult.Succeeded
-            ? Result.Success
-            : Result.Fail("Failed to encrypt the strong password into the KeyFile.");
+        return Result.Success;
     }
 }
