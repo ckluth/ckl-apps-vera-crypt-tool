@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="CKL.Apps.VeraCryptTool/CKL.Apps.VeraCryptTool.csproj" />
+  <Project Path="CKL.Apps.VeraCryptTool.Tests/CKL.Apps.VeraCryptTool.Tests.csproj" />
+</Solution>
